@@ -23,6 +23,7 @@
           <span class="label" id="angle-tilt">ANGLE</span>
           <span class="value">0°</span>
         </div>
+        <button class="reset-btn" id="reset-btn">RESET</button>
         
       </div>
         <div class="seesaw-area">
@@ -76,6 +77,16 @@
         font-size: 1rem;
         color: #F8FAFC;
         font-weight: 700;
+      }
+
+      .reset-btn{
+        padding: 10px 20px;
+        border-radius: 15px;
+        border: none;
+        background: #FF4F2D;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
       }
       
 
@@ -159,25 +170,109 @@
   </style>
 
   <script>
-  //**DOM references for seesaw
+  //**DOM references and config
+  const STORAGE_KEY = 'seesaw_objects';
+  const MAX_ANGLE=30;
+  const PLANK_LENGTH=400;
+  const OBJECT_COLORS = ['#6366F1', '#EAB308', '#F97316', '#8B5CF6'];
+  const SHAPES = ['square', 'triangle', 'circle'];
+
   const seesawArea = document.querySelector('.seesaw-area');
   const seesawPlank= document.querySelector('.seesaw-plank');
   const leftWeightDisplay=document.getElementById('left-side-weight');
   const rightWeightDisplay=document.getElementById('right-side-weight');
   const angleDisplay=document.getElementById('angle-tilt');
+  const resetButton = document.getElementById('reset-btn');
   const pivot = document.querySelector('.pivot');
-  
-  //constants
-  const MAX_ANGLE=30;
-  const PLANK_LENGTH=400;
 
-  //states
   let objects = [];
 
-  //**EVENTS**
+  //starters
+  seesawPlank.addEventListener('click', handleClickPlank);
+  resetButton.addEventListener('click', handleReset);
+  window.addEventListener('load', loadState);
 
-  seesawPlank.addEventListener('click',handleClickPlank);
+  //** State Management
 
+
+
+  const saveState = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(objects));
+
+  const loadState = () => {
+    const saved= localStorage.getItem(STORAGE_KEY);
+    if (saved){
+      objects = JSON.parse(saved);
+      objects.forEach(createObject);
+      updateSeesawPhysics();
+    }
+  }
+
+  //** Calculating torque and angle
+
+    function updateSeesawPhysics(){
+    let leftTorque = 0;
+    let rightTorque = 0;
+    let leftWeight = 0 ;
+    let rightWeight =0;
+
+    objects.forEach(obj => {
+      const torque = obj.weight * obj.distance;
+      if (obj.distance < 0) {
+        leftTorque += Math.abs(torque);
+        leftWeight += obj.weight;
+      } else {
+        rightTorque += torque;
+        rightWeight += obj.weight;
+      }
+    });
+
+    // update UI
+    const torqueDifference = rightTorque - leftTorque;
+    const angle = Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, torqueDifference / 50));
+    
+    //write values
+    document.querySelector('#left-side-weight + .value').innerText = `${leftWeight} kg`;
+    document.querySelector('#right-side-weight + .value').innerText = `${rightWeight} kg`;
+    document.querySelector('#angle-tilt + .value').innerText = `${angle.toFixed(1)}°`;
+    
+    //rotate plank
+    seesawPlank.style.transform = `rotate(${angle}deg)`; 
+  }
+
+
+    //**Functions
+
+    function createObject(obj){
+      const element = document.createElement('div');
+      element.classList.add('weight-object', obj.shape);
+    
+    const size = 30 + (obj.weight * 4);// heavier obj -> larger
+    const color = OBJECT_COLORS[obj.colorIndex];
+    const shapes = ['square','triangle','circle'];
+    
+    if (obj.shape === 'square' || obj.shape === 'circle') {
+      element.style.width = `${size}px`;
+      element.style.height = `${size}px`;
+      element.style.backgroundColor = color;
+    }
+    else if (obj.shape === 'triangle'){
+      element.style.borderLeft = `${size / 2}px solid transparent`;
+      element.style.borderRight = `${size / 2}px solid transparent`;
+      element.style.borderBottom = `${size}px solid ${color}`;
+    } 
+    
+    const label = document.createElement('span');
+    label.textContent = obj.weight;
+    element.appendChild(label);
+    
+    element.style.left = `${(obj.x / PLANK_LENGTH) * 100}%`;
+    seesawPlank.appendChild(element);
+
+  }
+
+
+
+  //*** Event handlers
 
   //clickable area and click function
   function handleClickPlank(event){
@@ -203,77 +298,52 @@
     objects.push(newObj);
     createObject(newObj);
     updateSeesawPhysics();
+    saveState();
 
   }
 
-  function createObject(obj){
-    const element = document.createElement('div');
-    element.classList.add('weight-object', obj.shape);
+  //reset items
+  function handleReset(){ 
+    localStorage.removeItem(STORAGE_KEY);
+    objects = [];
+    seesawPlank.innerHTML='';
+    updateSeesawPhysics();
 
-    
-    const size = 30 + (obj.weight * 4); // heavier obj -> larger
-    const shapes = ['square','triangle','circle'];
-    const objectColors = [
-    '#6366F1',
-    '#EAB308',
-    '#F97316',
-    '#8B5CF6'
-  ]
+  }
+ 
+
   
 
-  const color = objectColors[obj.colorIndex];
+
+
+
   
-  if (obj.shape === 'square' || obj.shape === 'circle') {
-    element.style.width = `${size}px`;
-    element.style.height = `${size}px`;
-    element.style.backgroundColor = color;
-
-  } else if (obj.shape === 'triangle') {
-    element.style.borderLeftWidth = `${size / 2}px`;
-    element.style.borderRightWidth = `${size / 2}px`;
-    element.style.borderBottomWidth = `${size}px`;
-    element.style.borderBottomColor = color;
-  }
-
-  const label = document.createElement('span');
-  label.textContent = obj.weight;
-  element.appendChild(label);
-
-  element.style.left = `${(obj.x / 400) * 100}%`;
-  seesawPlank.appendChild(element);
-
-  }
+  
 
 
-  //calculating torque and angle
-  function updateSeesawPhysics(){
-    let leftTorque = 0;
-    let rightTorque = 0;
-    let leftWeight = 0 ;
-    let rightWeight =0;
+ 
+  
+  
 
-    objects.forEach( obj =>{
-      const torque = obj.weight * obj.distance;
-      if (obj.dis<0){
-        leftTorque += Math.abs(torque);
-        leftWeight += obj.weight;
-      } else{
-        rightTorque += torque;
-        rightWeight += obj.weight;
-      } 
-      
-      const torqueDifference = rightTorque - leftTorque;
-      //angle = (rightTorque - leftTorque) / divisor
-      const angle = Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, torqueDifference / 50))
-      seesawPlank.style.transform = `rotate(${angle}deg)`;
 
-      //data 
-      angleDisplay.innerText=angle;
-      leftWeightDisplay.innerText=leftWeight;
-      rightWeightDisplay.innerText=rightWeight;
-    
-     
-    })
+  
+
+
+
+
+
+
+
+   
+
+   
+ 
+   
+
+
+
+
+
 
    
      
@@ -282,7 +352,7 @@
 
     
 
-  }
+  
 
 
   </script>
