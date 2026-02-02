@@ -25,7 +25,18 @@
         </div>
       </div>
       <div class="info-section">
-        <p>Click anywhere on the seesaw plank to drop drop objects weights between 1-10kg.</p>
+        <p>Click anywhere on the seesaw plank to drop objects weights between 1-10kg.</p>
+      </div>
+      <div class="next-object-preview">
+        <div class="preview-label">NEXT OBJECT</div>
+        <div class="preview-container">
+          <div id="next-object" class="preview-object">
+            <span id="next-object-label">?</span>
+          </div>
+          <div class="preview-info">
+            <span id="next-weight">?</span> kg
+          </div>
+        </div>
       </div>
       <button class="reset-btn" id="reset-btn">RESET</button>
 
@@ -126,6 +137,77 @@
         color:rgb(110, 109, 109);
         font-weight: 500;
       }
+
+      .next-object-preview {
+        background: var(--card-bg);
+        padding: 16px 24px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        box-shadow: 0 2px 4px rgba(49, 49, 49, 0.259) ;
+
+      }
+      
+      .preview-label{
+        font-size: 0.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color:darkgray;
+      }
+
+      .preview-container{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .preview-object{
+        width: 50px;
+        height: 50px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        
+        transition: transform 0.3s;
+        animation: pop 0.25s ease-out;
+      }
+      .preview-object.square {
+        border-radius: 5px;
+        box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+      .preview-object.triangle{
+        width: 0 !important;
+        height: 0 !important;
+        background: transparent !important;
+        border-left-style: solid; 
+        border-right-style: solid;
+        border-bottom-style: solid;
+        border-left-color: transparent;
+        border-right-color: transparent;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+      }
+      
+      .preview-object.triangle span {
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .preview-object.circle{
+        border-radius: 50%;
+        box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+      .preview-info{
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--primary-color);
+      }
+      
       
       
 
@@ -183,18 +265,21 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        font-weight: 800;
         color: white;
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        transition: transform 0.3s ease;
+        transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         z-index: 3;
         
       }
 
       .weight-object.square {
         border-radius: 5px;
+        box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.15);
       }
       .weight-object.circle{
         border-radius: 50%;
+        box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.15);
       }
       .weight-object.triangle{
         width: 0 !important;
@@ -205,8 +290,17 @@
         border-bottom-style: solid;
         border-left-color: transparent;
         border-right-color: transparent;
-
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
       }
+
+      .weight-object.triangle span {
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      
       .weight-object span {
         position: relative;
         z-index: 1;
@@ -214,8 +308,13 @@
         font-size: 14px;
         color: #F8FAFC;
         font-weight: bold;
-
       }
+      @keyframes pop {
+        0% { transform: scale(0.8); opacity: 0.6; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
+
 
   </style>
 
@@ -224,8 +323,7 @@
   const STORAGE_KEY = 'seesaw_objects';
   const MAX_ANGLE=30;
   const PLANK_LENGTH=400;
-  const OBJECT_COLORS = ['#6366F1', '#EAB308', '#F97316', '#8B5CF6'];
-  const SHAPES = ['square', 'triangle', 'circle'];
+  const OBJECT_COLORS = ['#6366F1', '#10B981', '#F59E0B', '#F43F5E', '#0EA5E9'];  const SHAPES = ['square', 'triangle', 'circle'];
 
   const seesawArea = document.querySelector('.seesaw-area');
   const seesawPlank= document.querySelector('.seesaw-plank');
@@ -235,18 +333,22 @@
   const resetButton = document.getElementById('reset-btn');
   const pivot = document.querySelector('.pivot');
 
+  let nextObject = null;
   let objects = [];
 
   //starters
   seesawPlank.addEventListener('click', handleClickPlank);
   resetButton.addEventListener('click', handleReset);
-  window.addEventListener('load', loadState);
+  window.addEventListener('load', () => {
+    generateNextObject();
+    loadState();
+    
+  });
+
 
   //** State Management
 
-
-
-  const saveState = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(objects));
+const saveState = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(objects));
 
   const loadState = () => {
     const saved= localStorage.getItem(STORAGE_KEY);
@@ -292,7 +394,53 @@
 
     //**Functions
 
-    function createObject(obj){
+
+  function generateNextObject() {
+    nextObject = {        
+      weight: Math.floor(Math.random() * 10) + 1,
+      shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
+      colorIndex: Math.floor(Math.random() * OBJECT_COLORS.length)
+    };
+    renderNextObjectPreview();
+  }
+
+  function renderNextObjectPreview() {
+    const previewBox = document.getElementById('next-object');
+    const weightLabel = document.getElementById('next-weight');
+    const objectLabel = document.getElementById('next-object-label');
+
+
+    previewBox.className = 'preview-object';
+    previewBox.style.backgroundColor = 'transparent';
+    previewBox.style.borderLeft = 'none';
+    previewBox.style.borderRight = 'none';
+    previewBox.style.borderBottom = 'none';
+
+    const color = OBJECT_COLORS[nextObject.colorIndex];
+    const size = 30 + nextObject.weight * 2;
+
+    previewBox.classList.add(nextObject.shape);
+    
+    if (nextObject.shape === 'triangle') {
+      previewBox.style.borderLeft = `${size / 2}px solid transparent`;
+      previewBox.style.borderRight = `${size / 2}px solid transparent`;    
+      previewBox.style.borderBottom = `${size}px solid ${color}`;
+    } else {
+      previewBox.style.width = `${size}px`;
+      previewBox.style.height = `${size}px`;
+      previewBox.style.backgroundColor = color;
+    }
+    
+    weightLabel.textContent = nextObject.weight;
+    objectLabel.textContent = nextObject.weight;
+
+    console.log(nextObject);
+
+  }
+
+
+   
+  function createObject(obj){
       const element = document.createElement('div');
       element.classList.add('weight-object', obj.shape);
     
@@ -333,24 +481,19 @@
 
     const distanceFromCenter = clickX - (rect.width / 2); // + right, - left, 0 center
 
-    //random objects
-    const weight = Math.floor(Math.random() * 10) + 1;
-    const shapes = ['square','triangle','circle'];
-    const shape = shapes[Math.floor(Math.random() * shapes.length)];
-    const colorIndex = Math.floor(Math.random() * 4);
-
     const newObj ={
       x: clickX,
       distance:distanceFromCenter,
-      weight:weight,
-      shape:shape,
-      colorIndex: colorIndex
-    };
+      weight:nextObject.weight,
+      shape:nextObject.shape,
+      colorIndex:nextObject.colorIndex
+    }
 
     objects.push(newObj);
     createObject(newObj);
     updateSeesawPhysics();
     saveState();
+    generateNextObject();
 
   }
 
