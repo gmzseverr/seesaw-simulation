@@ -8,7 +8,7 @@
 <body>
     <div class="container">
         <div class="seesaw-area">
-            <div class="seesaw-plank"></div>
+            <div id="seesaw-plank" class="seesaw-plank"></div>
             <div class="pivot"></div>
 
         </div>
@@ -47,6 +47,7 @@
         transform-origin: center center; 
         transition: transform 0.5s ease-out;
         z-index: 2;
+        cursor: pointer;
       }
       .pivot {
         width: 0;
@@ -56,6 +57,157 @@
         border-bottom: 50px solid #1A1A1A;
         z-index: 1;
       }
+
+      /*OBJECTS*/
+
+      .weight-object{
+        position:absolute;
+        bottom: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: transform 0.3s ease;
+      }
+
+      .weight-object.square {
+        border-radius: 5px;
+      }
+      .weight-object.circle{
+        border-radius: 50%;
+      }
+      .weight-object.triangle{
+        width: 0 !important;
+        height: 0 !important;
+        background: transparent !important;
+        border-left-style: solid; 
+        border-right-style: solid;
+        border-bottom-style: solid;
+        border-left-color: transparent;
+        border-right-color: transparent;
+
+      }
+
+
+
+
+
   </style>
+
+  <script>
+  //**DOM references for seesaw
+  const seesawArea = document.querySelector('.seesaw-area');
+  const seesawPlank= document.querySelector('.seesaw-plank');
+  const pivot = document.querySelector('.pivot');
+  
+  //constants
+  const MAX_ANGLE=30;
+  const PLANK_LENGTH=400;
+
+  //states
+  let objects = [];
+
+  //**EVENTS**
+
+  seesawPlank.addEventListener('click',handleClickPlank);
+
+
+  //clickable area and click function
+  function handleClickPlank(event){
+    const rect = seesawPlank.getBoundingClientRect();
+    const clickX = event.clientX - rect.left; //
+
+    const distanceFromCenter = clickX - (rect.width / 2); // + right, - left, 0 center
+
+    //random objects
+    const weight = Math.floor(Math.random() * 10) + 1;
+    const shapes = ['square','triangle','circle'];
+    const shape = shapes[Math.floor(Math.random() * shapes.length)];
+    const colorIndex = Math.floor(Math.random() * 4);
+
+    const newObj ={
+      x: clickX,
+      distance:distanceFromCenter,
+      weight:weight,
+      shape:shape,
+      colorIndex: colorIndex
+    };
+
+    objects.push(newObj);
+    createObject(newObj);
+    updateSeesawPhysics();
+
+  }
+
+  function createObject(obj){
+    const element = document.createElement('div');
+    element.classList.add('weight-object', obj.shape);
+
+    
+    const size = 30 + (obj.weight * 4); // heavier obj -> larger
+    const shapes = ['square','triangle','circle'];
+    const objectColors = [
+    '#6366F1',
+    '#EAB308',
+    '#F97316',
+    '#8B5CF6'
+  ]
+  
+
+  const color = objectColors[obj.colorIndex];
+  
+  if (obj.shape === 'square' || obj.shape === 'circle') {
+    element.style.width = `${size}px`;
+    element.style.height = `${size}px`;
+    element.style.backgroundColor = color;
+
+  } else if (obj.shape === 'triangle') {
+    element.style.borderLeftWidth = `${size / 2}px`;
+    element.style.borderRightWidth = `${size / 2}px`;
+    element.style.borderBottomWidth = `${size}px`;
+    element.style.borderBottomColor = color;
+  }
+
+  element.style.left = `${(obj.x / 400) * 100}%`;
+  seesawPlank.appendChild(element);
+
+  }
+
+
+  //calculating torque and angle
+  function updateSeesawPhysics(){
+    let leftTorque = 0;
+    let rightTorque = 0;
+    let leftWeight = 0 ;
+    let rightWeight =0;
+
+    objects.forEach( obj =>{
+      const torque = obj.weight * obj.distance;
+      if (obj.dis<0){
+        leftTorque += Math.abs(torque);
+        leftWeight += obj.weight;
+      } else{
+        rightTorque += torque;
+        rightWeight += obj.weight;
+      } 
+      
+      const torqueDifference = rightTorque - leftTorque;
+      //angle = (rightTorque - leftTorque) / divisor
+      const angle = Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, torqueDifference / 50))
+      seesawPlank.style.transform = `rotate(${angle}deg)`;
+    
+     
+    })
+
+   
+     
+
+  
+
+    
+
+  }
+
+
+  </script>
 
 </html>
