@@ -36,7 +36,7 @@ The following logic is implemented within the `updateSeesawPhysics` function:
    // Final angle is clamped between -30 and 30 degrees
    clampedAngle = Math.max(-30, Math.min(30, angle));
 
-4. Visual Update:
+4. **Visual Update:**
    The plank's rotation is updated dynamically using: 
    seesawPlank.style.transform = `rotate(${angle}deg)`;
 
@@ -49,7 +49,9 @@ The following logic is implemented within the `updateSeesawPhysics` function:
     - Logic for random object generation (weight, shape, color).
 
 ## Project Structure
+ ```
 ├── index.html      # UI structure
 ├── styles.css      # Themes, layout, animations
 ├── script.js       # Physics logic & interaction
 └── assets/         # Sound effects and media
+
